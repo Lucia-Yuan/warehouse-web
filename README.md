@@ -1,56 +1,64 @@
-# 仓库管理系统
+# 仓库资产管理系统
 
-GitHub Pages 前端 + Microsoft 365 Lists 数据 + 同组织共享的 OneDrive for Business 文件夹存储照片。
+公开的 GitHub Pages 页面 + Microsoft 365 Lists 数据 + 同组织共享的 OneDrive for Business 文件夹存储照片。
 
-## 本地运行
+- 仓库代码：https://github.com/Lucia-Yuan/warehouse-web
+- 页面：https://lucia-yuan.github.io/warehouse-web/
 
-安装 Node.js 后，在本目录运行：
+页面不保存库存数据、照片、密码或应用密钥。每位使用者通过自己的 Microsoft 365 工作账号登录。
 
-```bash
-npm install
-npm run dev
-```
+## 资产台账字段
 
-## Microsoft 365 准备
-
-1. 在 Microsoft Entra 管理中心注册“单页应用（SPA）”，账号类型选择本组织。登记本地重定向 URI `http://localhost:5173/`；发布后补充 GitHub Pages 的完整网址。前端只使用 Application (client) ID 和 Directory (tenant) ID，不使用 client secret。
-2. 为应用添加 Microsoft Graph **委托权限**：`User.Read`、`Sites.ReadWrite.All`、`Files.ReadWrite.All`。管理员需按组织政策授予同意。
-3. 在同一个 SharePoint 站点创建两个 Microsoft Lists，字段内部名称按下表建立。Lists 默认的 `Title` 字段保留。
-4. 在一个工作账号的 OneDrive for Business 创建照片文件夹，并向系统使用者授予编辑权限。将该文件夹的 Drive ID 和 Item ID 填进应用设置。每位用户都用自己的组织账号登录。
-5. 在应用“连接设置”填写 Tenant ID、Client ID、Site ID、两个 List ID、Drive ID、照片文件夹 Item ID。设置只保存在当前浏览器，**不包含密钥**。
-
-### 物品台账 List
-
-| 内部名称 | 类型 | 用途 |
+| 页面字段 | Microsoft List 内部名称 | 类型 |
 | --- | --- | --- |
-| Title | 单行文本 | 物品名称 |
-| SKU | 单行文本 | 物品编号，建议唯一 |
-| Category | 单行文本 | 类别 |
-| Unit | 单行文本 | 单位 |
-| Location | 单行文本 | 存放位置 |
-| MinStock | 数字 | 库存下限 |
-| PhotoDriveId | 单行文本 | 照片所在 Drive ID |
-| PhotoItemId | 单行文本 | 照片文件 Item ID |
-| Note | 多行文本 | 备注 |
+| 资产名称 | Title | 单行文本（Lists 默认字段） |
+| 状态 | Status | 单行文本 |
+| 入库日期 | InboundDate | 日期 |
+| 管理部门 | Department | 单行文本 |
+| 单价 | UnitPrice | 数字，保留两位小数 |
+| 价值 | 不单独存储 | 单价 × 当前库存，页面自动计算 |
+| 资产类型 | AssetType | 单行文本 |
+| 存放地点 | Location | 单行文本 |
+| 管理人 | Manager | 单行文本 |
+| 价值类型 | ValueType | 单行文本 |
+| 照片 Drive ID | PhotoDriveId | 单行文本（内部字段） |
+| 照片文件 ID | PhotoItemId | 单行文本（内部字段） |
 
-### 出入库记录 List
+资产台账内不单独保存库存数量。新建资产时可登记初始入库数量，之后由出入库记录汇总当前库存。
+
+## 出入库记录 List
 
 | 内部名称 | 类型 | 用途 |
 | --- | --- | --- |
 | Title | 单行文本 | 记录标题 |
-| ItemId | 单行文本 | 物品 List Item ID |
+| ItemId | 单行文本 | 资产 List Item ID |
 | Type | 单行文本 | `IN` 或 `OUT` |
 | Quantity | 数字 | 正数数量 |
 | OccurredAt | 日期和时间 | 操作时间 |
 | Operator | 单行文本 | 操作人 |
 | Note | 多行文本 | 备注 |
 
-库存由记录汇总计算，不单独维护可被手工改写的库存数字。初始库存请录入一笔“入库”。
+## Microsoft 365 接入
 
-## 发布到 GitHub Pages
+1. 在 Microsoft Entra 注册本组织使用的单页应用（SPA）。登记本地重定向 URI `http://localhost:5173/` 和线上地址 `https://lucia-yuan.github.io/warehouse-web/`。前端只用 Client ID 和 Tenant ID，不使用 client secret。
+2. 为应用添加 Microsoft Graph 委托权限：`User.Read`、`Sites.ReadWrite.All`、`Files.ReadWrite.All`。如组织策略要求，由管理员批准。
+3. 在一个 SharePoint 站点建立资产台账和出入库记录两个 Microsoft Lists，内部名称按上表设置。
+4. 在工作 OneDrive 创建照片文件夹，并给系统使用者编辑权限。页面设置需要该文件夹的 Drive ID 与 Item ID。
+5. 在页面“连接设置”中填写 Tenant ID、Client ID、Site ID、两个 List ID、Drive ID 和照片文件夹 Item ID。这些资源标识只保存在当前浏览器，不是密钥。
 
-建立 GitHub 仓库后，提交本目录文件。在 GitHub Actions 中执行 `npm ci`、`npm run build`，将 `dist` 发布到 Pages。发布后的完整页面 URL 必须加入 Entra 应用的 SPA 重定向 URI。GitHub Pages 只发布前端文件，物品数据和照片不会写入仓库。
+## 本地运行
 
-## 当前边界
+安装 Node.js 后：
 
-这是可连接的首版，尚未经过真实 Microsoft 365 租户联调。多人同时出库时，纯浏览器加 Lists 无法保证原子性；上线前应增加服务端或自动化流程统一校验库存，或明确采用人工复核。个人工作 OneDrive 文件夹由所有者维护，若所有者账号停用，照片访问会受影响。
+```bash
+pnpm install
+pnpm run dev
+```
+
+## 发布
+
+推送到 `main` 分支后，GitHub Actions 构建并发布 `dist` 到 GitHub Pages。
+
+## 使用边界
+
+真实 Microsoft 365 租户尚需完成授权和联调。多人同时出库时，浏览器端检查无法保证原子性；正式启用并发出库前，需要增加统一的服务端或自动化流程校验。照片文件夹由 OneDrive 所有者维护，所有者账号停用会影响照片访问。
