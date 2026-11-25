@@ -23,6 +23,17 @@ function clean(value) { return String(value || "").trim(); }
 function listBase(listId) {
   return `/sites/${encodeURIComponent(activeConfig.siteId)}/lists/${encodeURIComponent(listId)}/items`;
 }
+export function assetCode(item) {
+  const id = String(item?.id || "");
+  const created = new Date(item?.createdDateTime || item?.fields?.Created || "");
+  if (!/^\d+$/.test(id) || Number.isNaN(created.getTime())) {
+    throw new Error("无法从资产创建时间和清单 ID 生成编号。");
+  }
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(created).map(({ type, value }) => [type, value]));
+  return `${parts.year}${parts.month}${parts.day}${id.padStart(8, "0")}`;
+}
 async function authClient() {
   const config = getConfig();
   if (!isConfigured(config)) throw new Error("请先填写完整的连接设置。");
@@ -110,9 +121,16 @@ export async function loadData() {
 }
 export async function createItem(fields) {
   const config = getConfig(); activeConfig = config;
-  return graph(listBase(config.itemsListId), {
+  const item = await graph(listBase(config.itemsListId), {
     method: "POST", body: JSON.stringify({ fields }),
   });
+  try {
+    const code = assetCode(item);
+    await updateItem(item.id, { AssetCode: code });
+    return { ...item, assetCode: code };
+  } catch (error) {
+    return { ...item, assetCodeError: error.message };
+  }
 }
 export async function updateItem(id, fields) {
   const config = getConfig(); activeConfig = config;

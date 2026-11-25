@@ -2,7 +2,7 @@ import "./style.css";
 import {
   getConfig, saveConfig, isConfigured, signIn, signOut,
   loadData, createItem, updateItem, createMovement,
-  uploadPhoto, getPhotoBlob, stockByItem,
+  uploadPhoto, getPhotoBlob, stockByItem, assetCode,
 } from "./graph.js";
 
 const root = document.querySelector("#app");
@@ -97,16 +97,17 @@ function itemRows() {
   const q = state.query.trim().toLowerCase();
   const rows = state.items.filter((item) => {
     const f = item.fields || {};
-    return [f.Title, f.Status, f.Department, f.AssetType, f.Location, f.Manager, f.ValueType]
+    return [f.AssetCode, f.Title, f.Status, f.Department, f.AssetType, f.Location, f.Manager, f.ValueType, f.Remark]
       .some((v) => String(v || "").toLowerCase().includes(q));
   });
-  if (!rows.length) return '<tr><td colspan="11" class="empty">暂无匹配的资产</td></tr>';
+  if (!rows.length) return '<tr><td colspan="13" class="empty">暂无匹配的资产</td></tr>';
   return rows.map((item) => {
     const f = item.fields || {};
     const stock = Number(state.stock.get(String(item.id)) || 0);
     const value = Number(f.UnitPrice || 0) * stock;
     const inbound = f.InboundDate ? new Date(f.InboundDate).toLocaleDateString("zh-CN") : "—";
     return `<tr>
+      <td>${escapeHtml(f.AssetCode || "待生成")}</td>
       <td><div class="item-name"><span class="thumb" data-photo="${escapeHtml(item.id)}">▧</span><span><strong>${escapeHtml(f.Title)}</strong><small>库存 ${fmt(stock)} 个</small></span></div></td>
       <td>${escapeHtml(f.Status || "—")}</td>
       <td>${escapeHtml(inbound)}</td>
@@ -117,15 +118,16 @@ function itemRows() {
       <td>${escapeHtml(f.Location || "—")}</td>
       <td>${escapeHtml(f.Manager || "—")}</td>
       <td>${escapeHtml(f.ValueType || "—")}</td>
+      <td>${escapeHtml(f.Remark || "—")}</td>
       <td><div class="row-actions"><button class="text-btn" data-move-item="${escapeHtml(item.id)}">出入库</button><button class="text-btn" data-edit-item="${escapeHtml(item.id)}">编辑</button></div></td>
     </tr>`;
   }).join("");
 }
 function itemsPage() {
   return `<section class="page">
-    ${heading("资产台账", "按资产名称、状态、部门、类型、地点和管理人查询。价值按单价与当前库存自动计算。", '<button class="primary" data-open="item">新增资产</button>')}
-    <section class="panel table-panel"><div class="toolbar"><input id="searchInput" type="search" placeholder="搜索资产名称、状态、部门、类型、地点或管理人" value="${escapeHtml(state.query)}" /><span>${state.items.length} 种资产</span></div>
-    <div class="table-wrap"><table><thead><tr><th>资产名称</th><th>状态</th><th>入库日期</th><th>管理部门</th><th>单价</th><th>价值</th><th>资产类型</th><th>存放地点</th><th>管理人</th><th>价值类型</th><th>操作</th></tr></thead><tbody id="itemBody">${itemRows()}</tbody></table></div></section>
+    ${heading("资产台账", "按资产编号、名称、状态、部门、类型、地点、管理人和备注查询。价值按单价与当前库存自动计算。", '<button class="primary" data-open="item">新增资产</button>')}
+    <section class="panel table-panel"><div class="toolbar"><input id="searchInput" type="search" placeholder="搜索编号、名称、状态、部门、类型、地点、管理人或备注" value="${escapeHtml(state.query)}" /><span>${state.items.length} 种资产</span></div>
+    <div class="table-wrap"><table><thead><tr><th>资产编号</th><th>资产名称</th><th>状态</th><th>入库日期</th><th>管理部门</th><th>单价</th><th>价值</th><th>资产类型</th><th>存放地点</th><th>管理人</th><th>价值类型</th><th>备注</th><th>操作</th></tr></thead><tbody id="itemBody">${itemRows()}</tbody></table></div></section>
   </section>`;
 }
 function movementsPage() {
@@ -180,6 +182,7 @@ function itemForm(item = null) {
   const inbound = f.InboundDate ? String(f.InboundDate).slice(0,10) : new Date().toISOString().slice(0,10);
   modal(item ? "编辑资产" : "新增资产", `<form id="itemForm" data-id="${escapeHtml(item?.id || "")}">
     <div class="form-grid two">
+      <label>资产编号<input value="${escapeHtml(f.AssetCode || (item ? "待生成" : "保存后自动生成"))}" disabled /></label>
       <label>资产名称 *<input name="Title" value="${escapeHtml(f.Title || "")}" required maxlength="100" /></label>
       <label>状态<input name="Status" value="${escapeHtml(f.Status || "在库")}" placeholder="如：在库、借出、维修" /></label>
       <label>入库日期<input name="InboundDate" type="date" value="${escapeHtml(inbound)}" /></label>
@@ -190,6 +193,7 @@ function itemForm(item = null) {
       <label>存放地点<input name="Location" value="${escapeHtml(f.Location || "")}" /></label>
       <label>管理人<input name="Manager" value="${escapeHtml(f.Manager || "")}" /></label>
       <label>价值类型<input name="ValueType" value="${escapeHtml(f.ValueType || "")}" /></label>
+      <label class="wide">备注<textarea name="Remark" rows="3">${escapeHtml(f.Remark || "")}</textarea></label>
       ${item ? "" : '<label>初始入库数量<input name="InitialQuantity" type="number" min="0" step="1" value="0" /></label>'}
       <label class="wide">照片（可选，20 MB 以内）<input name="photo" type="file" accept="image/*" /></label>
     </div><div class="form-actions"><button class="ghost" type="button" data-close>取消</button><button class="primary" type="submit">保存资产</button></div>
@@ -245,13 +249,17 @@ document.addEventListener("submit", async (event) => {
       await refresh();
       notify("连接成功", "success");
     } else if (form.id === "itemForm") {
-      const fields = Object.fromEntries(["Title","Status","Department","AssetType","Location","Manager","ValueType"]
+      const fields = Object.fromEntries(["Title","Status","Department","AssetType","Location","Manager","ValueType","Remark"]
         .map(k=>[k,String(data.get(k)||"").trim()]));
       fields.InboundDate = String(data.get("InboundDate") || "").trim() || null;
       fields.UnitPrice = Number(data.get("UnitPrice") || 0);
       if (!fields.Title) throw new Error("请填写资产名称。");
       if (!Number.isFinite(fields.UnitPrice) || fields.UnitPrice < 0) throw new Error("单价必须为非负数。");
       const id = form.dataset.id;
+      if (id) {
+        const existing = state.items.find((item) => String(item.id) === id);
+        if (existing && !existing.fields?.AssetCode) fields.AssetCode = assetCode(existing);
+      }
       const initialQuantity = Number(data.get("InitialQuantity") || 0);
       if (!id && (!Number.isInteger(initialQuantity) || initialQuantity < 0)) throw new Error("初始入库数量应为非负整数。");
       const saved = id ? (await updateItem(id,fields), {id}) : await createItem(fields);
@@ -272,7 +280,8 @@ document.addEventListener("submit", async (event) => {
       }
       document.querySelector("#modalHost").innerHTML = "";
       await refresh();
-      notify(photoError ? `资产已保存，但照片上传失败：${photoError}` : "资产已保存", photoError ? "error" : "success");
+      const warnings = [saved.assetCodeError && `资产编号写入失败：${saved.assetCodeError}`, photoError && `照片上传失败：${photoError}`].filter(Boolean);
+      notify(warnings.length ? `资产已保存，但${warnings.join("；")}` : "资产已保存", warnings.length ? "error" : "success");
     } else {
       const itemId = String(data.get("ItemId")||"");
       const item = state.items.find(x=>String(x.id)===itemId);
