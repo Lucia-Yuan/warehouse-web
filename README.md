@@ -4,8 +4,17 @@
 
 - 仓库代码：https://github.com/Lucia-Yuan/warehouse-web
 - 页面：https://lucia-yuan.github.io/warehouse-web/
+- 独立快速录入页面：https://lucia-yuan.github.io/warehouse-web/key-in.html
 
 页面不保存库存数据、照片、密码或应用密钥。每位使用者通过自己的 Microsoft 365 工作账号登录。
+
+## 快速录入 Key In
+
+快速录入是独立清单，当前不写入资产台账，也不计算库存。录入页只要求一张照片、正整数数量和位置。位置可填仅含大写英文字母及数字的编码（如 `A12`），或不含英文字母的中文描述（如 `地下仓库一层`）。录入页会校验此规则；直接在 Microsoft Lists 中编辑时，需由管理员另行核对。
+
+照片上传到工作 OneDrive 的共享文件夹；清单保存数量、位置、照片文件 ID 和照片地址。清单视图只显示照片、数量、位置。以后可增加 AI 根据照片生成贴切的中文物品名称，再经人工确认后转入正式台账；这两步当前未启用。
+
+快速录入页面单独保存连接设置，使用与主台账相同的工作账号，但不依赖主台账的清单 ID。首次使用需填写 Tenant ID、SPA Client ID、站点 ID、快速录入清单 ID、OneDrive Drive ID、照片文件夹 Item ID。
 
 ## 资产台账字段
 
@@ -42,7 +51,7 @@
 
 ## Microsoft 365 接入
 
-1. 在 Microsoft Entra 注册本组织使用的单页应用（SPA）。登记本地重定向 URI `http://localhost:5173/` 和线上地址 `https://lucia-yuan.github.io/warehouse-web/`。前端只用 Client ID 和 Tenant ID，不使用 client secret。
+1. 在 Microsoft Entra 注册本组织使用的单页应用（SPA）。登记本地重定向 URI `http://localhost:5173/`、`http://localhost:5173/key-in.html`，以及线上地址 `https://lucia-yuan.github.io/warehouse-web/`、`https://lucia-yuan.github.io/warehouse-web/key-in.html`。前端只用 Client ID 和 Tenant ID，不使用 client secret。
 2. 为应用添加 Microsoft Graph 委托权限：`User.Read`、`Sites.ReadWrite.All`、`Files.ReadWrite.All`。如组织策略要求，由管理员批准。
 3. 资产台账和出入库记录两个 Microsoft Lists 已在组织的 Operations 站点建立，字段按上表设置。
 4. 工作 OneDrive 的照片文件夹已建立。取得使用者邮箱后，需给这些人编辑权限。页面设置需要该文件夹的 Drive ID 与 Item ID。
