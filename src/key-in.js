@@ -28,12 +28,12 @@ function safePhotoLink(value) {
 function entryRows() {
   if (!state.account) return '<p class="empty">登录后显示资产台账</p>';
   if (!state.entries.length) return '<p class="empty">还没有录入记录</p>';
-  return `<div class="table-scroll"><table><thead><tr><th>照片</th><th>数量</th><th>位置</th></tr></thead><tbody>${state.entries.map((entry) => {
+  return `<div class="table-scroll"><table><thead><tr><th>资产编号</th><th>照片</th><th>数量</th><th>位置</th></tr></thead><tbody>${state.entries.map((entry) => {
     const f = entry.fields || {};
     const details = state.photoDetails.get(`${f.PhotoDriveId}/${f.PhotoItemId}`);
     const link = safePhotoLink(details?.webUrl);
     const photo = link ? `<a class="photo-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${details.thumbnailUrl ? `<img src="${escapeHtml(details.thumbnailUrl)}" alt="资产照片" />` : '<span class="photo-placeholder">查看照片</span>'}</a>` : (f.PhotoItemId ? (details ? "照片不可用" : "加载照片…") : "—");
-    return `<tr><td>${photo}</td><td>${escapeHtml(entry.currentQuantity)}</td><td>${escapeHtml(f.Location || "—")}</td></tr>`;
+    return `<tr><td>${escapeHtml(f.AssetCode || "待生成")}</td><td>${photo}</td><td>${escapeHtml(entry.currentQuantity)}</td><td>${escapeHtml(f.Location || "—")}</td></tr>`;
   }).join("")}</tbody></table></div>`;
 }
 
@@ -58,7 +58,7 @@ function render() {
             <p id="save-status" class="save-status" role="status"></p>
           </form>
         </section>
-        <section class="card list-card"><div class="list-top"><div class="card-heading"><span class="step">02</span><div><h2>原资产台账</h2><p>只显示照片、当前数量、位置</p></div></div><button type="button" id="refresh" class="secondary">刷新</button></div>
+        <section class="card list-card"><div class="list-top"><div class="card-heading"><span class="step">02</span><div><h2>原资产台账</h2><p>资产编号自动生成；显示照片、当前数量、位置</p></div></div><button type="button" id="refresh" class="secondary">刷新</button></div>
           <div id="entries">${entryRows()}</div>
         </section>
       </div>
