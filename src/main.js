@@ -44,7 +44,8 @@ function nav() {
     ["dashboard", "总览"], ["items", "资产台账"],
     ["movements", "出入库记录"], ["settings", "连接设置"],
   ];
-  return links.map(([id, label]) => `<button class="nav-link ${state.page === id ? "active" : ""}" data-page="${id}">${label}</button>`).join("");
+  return links.map(([id, label]) => `<button class="nav-link ${state.page === id ? "active" : ""}" data-page="${id}">${label}</button>`).join("")
+    + '<a class="nav-link" href="./key-in.html" style="display:block;text-decoration:none">Key In 快速录入</a>';
 }
 function shell(content) {
   root.innerHTML = `

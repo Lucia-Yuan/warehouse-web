@@ -41,7 +41,7 @@ function render() {
   const config = getKeyInConfig();
   root.innerHTML = `<div class="key-shell">
     <header class="key-header"><div class="key-brand"><span class="brand-icon">仓</span><div><strong>仓库快速录入</strong><small>Key In</small></div></div>
-      <div class="account-actions"><span>${escapeHtml(state.account?.name || "未登录")}</span>${state.account ? '<button type="button" id="logout" class="secondary">退出</button>' : '<button type="button" id="login" class="secondary">登录 Microsoft 365</button>'}</div>
+      <div class="account-actions"><a class="secondary" href="./" style="text-decoration:none">仓库主页</a><span>${escapeHtml(state.account?.name || "未登录")}</span>${state.account ? '<button type="button" id="logout" class="secondary">退出</button>' : '<button type="button" id="login" class="secondary">登录 Microsoft 365</button>'}</div>
     </header>
     <main>
       <section class="intro"><span class="eyebrow">直接进入资产台账</span><h1>拍一张，填两项，完成录入。</h1><p>照片保存到工作 OneDrive；数量写入原台账并登记首次入库。</p></section>
@@ -63,7 +63,7 @@ function render() {
         </section>
       </div>
       <details id="connection" class="connection"><summary>连接设置</summary><div class="connection-body"><p>首次使用请填写管理员提供的 Microsoft 365 连接信息。设置只保存在当前浏览器。</p>
-        <form id="config-form"><div class="config-grid">${configFields.map(([key, label]) => `<label>${label}<input name="${key}" value="${escapeHtml(config[key] || "")}" autocomplete="off" required /></label>`).join("")}</div><button type="submit" class="secondary">保存连接设置</button></form>
+        <form id="config-form"><div class="config-grid">${configFields.map(([key, label]) => `<label>${label}<input name="${key}" value="${escapeHtml(config[key] || "")}" autocomplete="off" /></label>`).join("")}</div><button type="submit" class="secondary">保存连接设置</button></form>
       </div></details>
     </main>
   </div>`;
@@ -126,8 +126,9 @@ function bindEvents() {
     event.preventDefault();
     const values = Object.fromEntries(new FormData(event.currentTarget).entries());
     saveKeyInConfig(values);
-    document.querySelector("#connection").open = false;
-    message("连接设置已保存在当前浏览器。请登录 Microsoft 365。");
+    const missing = configFields.filter(([key]) => !String(values[key] || "").trim()).map(([, label]) => label);
+    document.querySelector("#connection").open = missing.length > 0;
+    message(missing.length ? `已保存现有设置，仍需填写：${missing.join("、")}。` : "连接设置已保存在当前浏览器。请登录 Microsoft 365。");
   });
   document.querySelector("#login")?.addEventListener("click", async () => {
     setBusy(true);
