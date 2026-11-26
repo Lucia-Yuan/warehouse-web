@@ -28,12 +28,12 @@ function safePhotoLink(value) {
 function entryRows() {
   if (!state.account) return '<p class="empty">登录后显示资产台账</p>';
   if (!state.entries.length) return '<p class="empty">还没有录入记录</p>';
-  return `<div class="table-scroll"><table><thead><tr><th>资产编号</th><th>照片</th><th>数量</th><th>位置</th></tr></thead><tbody>${state.entries.map((entry) => {
+  return `<div class="table-scroll"><table><thead><tr><th>照片</th><th>数量</th><th>位置</th></tr></thead><tbody>${state.entries.map((entry) => {
     const f = entry.fields || {};
     const details = state.photoDetails.get(`${f.PhotoDriveId}/${f.PhotoItemId}`);
     const link = safePhotoLink(details?.webUrl);
     const photo = link ? `<a class="photo-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${details.thumbnailUrl ? `<img src="${escapeHtml(details.thumbnailUrl)}" alt="资产照片" />` : '<span class="photo-placeholder">查看照片</span>'}</a>` : (f.PhotoItemId ? (details ? "照片不可用" : "加载照片…") : "—");
-    return `<tr><td>${escapeHtml(f.AssetCode || "待生成")}</td><td>${photo}</td><td>${escapeHtml(entry.currentQuantity)}</td><td>${escapeHtml(f.Location || "—")}</td></tr>`;
+    return `<tr><td>${photo}</td><td>${escapeHtml(entry.currentQuantity)}</td><td>${escapeHtml(f.Location || "—")}</td></tr>`;
   }).join("")}</tbody></table></div>`;
 }
 
@@ -58,7 +58,7 @@ function render() {
             <p id="save-status" class="save-status" role="status"></p>
           </form>
         </section>
-        <section class="card list-card"><div class="list-top"><div class="card-heading"><span class="step">02</span><div><h2>原资产台账</h2><p>资产编号自动生成；显示照片、当前数量、位置</p></div></div><button type="button" id="refresh" class="secondary">刷新</button></div>
+        <section class="card list-card"><div class="list-top"><div class="card-heading"><span class="step">02</span><div><h2>原资产台账</h2><p>只显示照片、当前数量、位置</p></div></div><button type="button" id="refresh" class="secondary">刷新</button></div>
           <div id="entries">${entryRows()}</div>
         </section>
       </div>
@@ -180,8 +180,7 @@ function bindEvents() {
       document.querySelector("#photo-file-name").textContent = "";
       render();
       const warnings = [result.item.assetCodeError && `资产编号写入失败：${result.item.assetCodeError}`, result.movementError && `出入库记录写入失败：${result.movementError}`].filter(Boolean);
-      const identifier = result.item.assetCode || `记录 ID ${result.item.id}`;
-      const savedMessage = warnings.length ? `资产已存入原台账（${identifier}），但${warnings.join("；")}。请勿重复提交，请联系管理员补录。` : "已存入原资产台账，数量已登记为首次入库。";
+      const savedMessage = warnings.length ? `资产已存入原台账，但${warnings.join("；")}。请勿重复提交，请联系管理员补录。` : "已存入原资产台账，数量已登记为首次入库。";
       message(savedMessage, warnings.length > 0);
       try { await refreshEntries(); }
       catch { message(`${savedMessage} 清单暂时无法刷新，点击刷新重试。`, true); }
