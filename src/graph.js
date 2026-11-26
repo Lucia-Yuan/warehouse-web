@@ -167,5 +167,12 @@ export function stockByItem(items, movements) {
     if (!stock.has(id) || !Number.isFinite(quantity)) continue;
     stock.set(id, stock.get(id) + (f.Type === "IN" ? quantity : f.Type === "OUT" ? -quantity : 0));
   }
+  for (const item of items) {
+    const quantity = item.fields?.Quantity;
+    if (quantity !== null && quantity !== undefined && quantity !== "") {
+      const value = Number(quantity);
+      if (Number.isFinite(value)) stock.set(String(item.id), value);
+    }
+  }
   return stock;
 }

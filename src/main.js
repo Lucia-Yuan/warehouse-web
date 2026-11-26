@@ -79,7 +79,7 @@ function dashboard() {
   const todayMovements = state.movements.filter((x) => String(x.fields?.OccurredAt || "").startsWith(today));
   const recent = [...state.movements].sort((a,b) => new Date(b.fields?.OccurredAt || 0) - new Date(a.fields?.OccurredAt || 0)).slice(0, 6);
   return `<section class="page">
-    ${heading("仓库总览", "查看资产台账和最近的出入库操作。", '<button class="primary" data-open="movement">登记出入库</button>')}
+    ${heading("仓库总览", "查看资产台账和最近的出入库操作。", '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ghost" data-open="item">新增资产</button><button class="primary" data-open="movement">登记出入库</button></div>')}
     <div class="stat-grid">
       <article class="stat"><span>资产种类</span><strong>${items.length}</strong><small>台账记录</small></article>
       <article class="stat"><span>当前库存价值</span><strong>¥${fmt(totalValue)}</strong><small>单价 × 当前库存</small></article>
@@ -100,7 +100,7 @@ function itemRows() {
     return [f.AssetCode, f.Title, f.Status, f.Department, f.AssetType, f.Location, f.Manager, f.ValueType, f.Remark]
       .some((v) => String(v || "").toLowerCase().includes(q));
   });
-  if (!rows.length) return '<tr><td colspan="13" class="empty">暂无匹配的资产</td></tr>';
+  if (!rows.length) return '<tr><td colspan="14" class="empty">暂无匹配的资产</td></tr>';
   return rows.map((item) => {
     const f = item.fields || {};
     const stock = Number(state.stock.get(String(item.id)) || 0);
@@ -108,7 +108,8 @@ function itemRows() {
     const inbound = f.InboundDate ? new Date(f.InboundDate).toLocaleDateString("zh-CN") : "—";
     return `<tr>
       <td>${escapeHtml(f.AssetCode || "待生成")}</td>
-      <td><div class="item-name"><span class="thumb" data-photo="${escapeHtml(item.id)}">▧</span><span><strong>${escapeHtml(f.Title)}</strong><small>库存 ${fmt(stock)} 个</small></span></div></td>
+      <td><div class="item-name"><span class="thumb" data-photo="${escapeHtml(item.id)}">▧</span><span><strong>${escapeHtml(f.Title)}</strong></span></div></td>
+      <td>${fmt(stock)} 个</td>
       <td>${escapeHtml(f.Status || "—")}</td>
       <td>${escapeHtml(inbound)}</td>
       <td>${escapeHtml(f.Department || "—")}</td>
@@ -127,7 +128,7 @@ function itemsPage() {
   return `<section class="page">
     ${heading("资产台账", "按资产编号、名称、状态、部门、类型、地点、管理人和备注查询。价值按单价与当前库存自动计算。", '<button class="primary" data-open="item">新增资产</button>')}
     <section class="panel table-panel"><div class="toolbar"><input id="searchInput" type="search" placeholder="搜索编号、名称、状态、部门、类型、地点、管理人或备注" value="${escapeHtml(state.query)}" /><span>${state.items.length} 种资产</span></div>
-    <div class="table-wrap"><table><thead><tr><th>资产编号</th><th>资产名称</th><th>状态</th><th>入库日期</th><th>管理部门</th><th>单价</th><th>价值</th><th>资产类型</th><th>存放地点</th><th>管理人</th><th>价值类型</th><th>备注</th><th>操作</th></tr></thead><tbody id="itemBody">${itemRows()}</tbody></table></div></section>
+    <div class="table-wrap"><table><thead><tr><th>资产编号</th><th>资产名称</th><th>当前数量</th><th>状态</th><th>入库日期</th><th>管理部门</th><th>单价</th><th>价值</th><th>资产类型</th><th>存放地点</th><th>管理人</th><th>价值类型</th><th>备注</th><th>操作</th></tr></thead><tbody id="itemBody">${itemRows()}</tbody></table></div></section>
   </section>`;
 }
 function movementsPage() {
@@ -184,6 +185,7 @@ function itemForm(item = null) {
     <div class="form-grid two">
       <label>资产编号<input value="${escapeHtml(f.AssetCode || (item ? "待生成" : "保存后自动生成"))}" disabled /></label>
       <label>资产名称 *<input name="Title" value="${escapeHtml(f.Title || "")}" required maxlength="100" /></label>
+      <label>数量（个）*<input name="StockQuantity" type="number" min="0" step="1" required value="${item ? escapeHtml(state.stock.get(String(item.id)) ?? 0) : "0"}" /></label>
       <label>状态<input name="Status" value="${escapeHtml(f.Status || "在库")}" placeholder="如：在库、借出、维修" /></label>
       <label>入库日期<input name="InboundDate" type="date" value="${escapeHtml(inbound)}" /></label>
       <label>管理部门<input name="Department" value="${escapeHtml(f.Department || "")}" /></label>
@@ -194,9 +196,8 @@ function itemForm(item = null) {
       <label>管理人<input name="Manager" value="${escapeHtml(f.Manager || "")}" /></label>
       <label>价值类型<input name="ValueType" value="${escapeHtml(f.ValueType || "")}" /></label>
       <label class="wide">备注<textarea name="Remark" rows="3">${escapeHtml(f.Remark || "")}</textarea></label>
-      ${item ? "" : '<label>初始入库数量<input name="InitialQuantity" type="number" min="0" step="1" value="0" /></label>'}
       <label class="wide">照片（可选，20 MB 以内）<input name="photo" type="file" accept="image/*" /></label>
-    </div><div class="form-actions"><button class="ghost" type="button" data-close>取消</button><button class="primary" type="submit">保存资产</button></div>
+    </div>${item ? '<p class="form-hint">修改数量后，系统会自动登记对应的入库或出库记录。</p>' : ''}<div class="form-actions"><button class="ghost" type="button" data-close>取消</button><button class="primary" type="submit">保存资产</button></div>
   </form>`);
 }
 function movementForm(itemId = "") {
@@ -260,17 +261,23 @@ document.addEventListener("submit", async (event) => {
         const existing = state.items.find((item) => String(item.id) === id);
         if (existing && !existing.fields?.AssetCode) fields.AssetCode = assetCode(existing);
       }
-      const initialQuantity = Number(data.get("InitialQuantity") || 0);
-      if (!id && (!Number.isInteger(initialQuantity) || initialQuantity < 0)) throw new Error("初始入库数量应为非负整数。");
+      const targetQuantity = Number(data.get("StockQuantity"));
+      if (!Number.isSafeInteger(targetQuantity) || targetQuantity < 0) throw new Error("数量应为非负整数。");
+      fields.Quantity = targetQuantity;
+      const currentQuantity = id ? Number(state.stock.get(id) || 0) : 0;
+      const difference = targetQuantity - currentQuantity;
       const saved = id ? (await updateItem(id,fields), {id}) : await createItem(fields);
-      if (!id && initialQuantity > 0) {
-        await createMovement({
-          Title: `初始入库-${saved.id}-${Date.now()}`,
-          ItemId: String(saved.id), Type: "IN", Quantity: initialQuantity,
-          OccurredAt: new Date().toISOString(),
-          Operator: state.me?.displayName || state.me?.userPrincipalName || "",
-          Note: "新增资产时登记的初始库存",
-        });
+      let movementError = null;
+      if (difference !== 0) {
+        try {
+          await createMovement({
+            Title: `${difference > 0 ? "入库" : "出库"}-${saved.id}-${Date.now()}`,
+            ItemId: String(saved.id), Type: difference > 0 ? "IN" : "OUT", Quantity: Math.abs(difference),
+            OccurredAt: new Date().toISOString(),
+            Operator: state.me?.displayName || state.me?.userPrincipalName || "",
+            Note: id ? "编辑资产时调整数量" : "新增资产时登记的初始库存",
+          });
+        } catch (error) { movementError = error.message; }
       }
       const photo = data.get("photo");
       let photoError = null;
@@ -280,7 +287,7 @@ document.addEventListener("submit", async (event) => {
       }
       document.querySelector("#modalHost").innerHTML = "";
       await refresh();
-      const warnings = [saved.assetCodeError && `资产编号写入失败：${saved.assetCodeError}`, photoError && `照片上传失败：${photoError}`].filter(Boolean);
+      const warnings = [saved.assetCodeError && `资产编号写入失败：${saved.assetCodeError}`, movementError && `出入库记录写入失败：${movementError}`, photoError && `照片上传失败：${photoError}`].filter(Boolean);
       notify(warnings.length ? `资产已保存，但${warnings.join("；")}` : "资产已保存", warnings.length ? "error" : "success");
     } else {
       const itemId = String(data.get("ItemId")||"");
@@ -288,18 +295,23 @@ document.addEventListener("submit", async (event) => {
       const type = String(data.get("Type")||"");
       const quantity = Number(data.get("Quantity"));
       if (!item || !["IN","OUT"].includes(type) || !Number.isInteger(quantity) || quantity<=0) throw new Error("请检查资产、类型和数量；数量应为正整数。");
-      if (type==="OUT" && quantity>Number(state.stock.get(itemId)||0)) throw new Error("出库数量超过当前库存。请先刷新库存。");
+      const currentQuantity = Number(state.stock.get(itemId) || 0);
+      if (type==="OUT" && quantity>currentQuantity) throw new Error("出库数量超过当前库存。请先刷新库存。");
       const occurredAt = new Date(String(data.get("OccurredAt"))).toISOString();
-      await createMovement({
-        Title: `${type==="IN"?"入库":"出库"}-${itemId}-${Date.now()}`,
-        ItemId: itemId, Type: type, Quantity: quantity,
-        OccurredAt: occurredAt,
-        Operator: state.me?.displayName || state.me?.userPrincipalName || "",
-        Note: String(data.get("Note")||"").trim(),
-      });
+      await updateItem(itemId, { Quantity: currentQuantity + (type === "IN" ? quantity : -quantity) });
+      let movementError = null;
+      try {
+        await createMovement({
+          Title: `${type==="IN"?"入库":"出库"}-${itemId}-${Date.now()}`,
+          ItemId: itemId, Type: type, Quantity: quantity,
+          OccurredAt: occurredAt,
+          Operator: state.me?.displayName || state.me?.userPrincipalName || "",
+          Note: String(data.get("Note")||"").trim(),
+        });
+      } catch (error) { movementError = error.message; }
       document.querySelector("#modalHost").innerHTML = "";
       await refresh();
-      notify("出入库记录已保存", "success");
+      notify(movementError ? `数量已更新，但出入库记录写入失败：${movementError}` : "出入库记录已保存", movementError ? "error" : "success");
     }
   } catch (error) { notify(error.message, "error"); }
   finally { setBusy(false); }
